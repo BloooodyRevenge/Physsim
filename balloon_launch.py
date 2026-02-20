@@ -52,8 +52,15 @@ balloon_img = load_image("shar.png", 0.12)
 balast_img = load_image("balast.png", 0.12)
 klapan_img = load_image("klapan.png", 0.12)
 tree_img = load_image("tree.png", 0.18)
+sun_img = load_image("sun.png", 0.18)
+kust_img = load_image("kust.png", 0.18)
+sky_img = load_image("sky.png", 0.18)
 
-# Создаём заглушки
+bg_img = load_image("background.jpg", 1)
+logo_img = load_image("logo.png", 1)
+
+
+
 if balloon_img is None:
     balloon_img = pygame.Surface((36, 48), pygame.SRCALPHA)
     pygame.draw.circle(balloon_img, (255, 100, 100), (18, 16), 14)
@@ -188,13 +195,13 @@ slides = [
         "color": (120, 220, 140)
     },
     {
-        "title": "ПОЗДРАВЛЯЮ!",
-        "text": "Ты успешно провёл шар через все испытания!\n\n10 смен цвета пройдено.",
+        "title": "ФАКТЫ",
+        "text": "Интересные факты:\n\n• Первый полёт - 1783 год\n• Рекорд высоты - 21 км",
         "color": (240, 200, 100)
     },
     {
-        "title": "ФАКТЫ",
-        "text": "Интересные факты:\n\n• Первый полёт - 1783 год\n• Рекорд высоты - 21 км",
+        "title": "Выводы",
+        "text": "Мы изучили и разобрали воздушный шар по полочкам.\n\n Теперь переёдем к финальному тестированию и завершим данный урок",
         "color": (200, 150, 200)
     }
 ]
