@@ -59,8 +59,6 @@ sky_img = load_image("sky.png", 0.18)
 bg_img = load_image("background.jpg", 1)
 logo_img = load_image("logo.png", 1)
 
-
-
 if balloon_img is None:
     balloon_img = pygame.Surface((36, 48), pygame.SRCALPHA)
     pygame.draw.circle(balloon_img, (255, 100, 100), (18, 16), 14)
@@ -91,10 +89,10 @@ balloon_height = balloon_img.get_height()
 WORLD_WIDTH = 5000
 WORLD_HEIGHT = 4000
 
-# Начальная позиция шара - опустил на 100 пикселей
+# Начальная позиция шара в МИРЕ
 GROUND_LEVEL = WORLD_HEIGHT - 300
 balloon_x = 200
-balloon_y = GROUND_LEVEL - balloon_height + 100  # +100 вместо +60
+balloon_y = GROUND_LEVEL - balloon_height + 100
 MAX_HEIGHT = 100
 MIN_START_HEIGHT = 600
 
@@ -128,14 +126,14 @@ color_config = 1
 # Дебаг режим
 debug_mode = False
 
-# ДЕРЕВЬЯ - опустил на 100 пикселей
+# ДЕРЕВЬЯ (позиции в мире)
 trees = []
 
 # Первое дерево
 trees.append({
     'image': tree_img,
     'x': 100,
-    'y': GROUND_LEVEL - tree_img.get_height() + 100  # +100
+    'y': GROUND_LEVEL - tree_img.get_height() + 100
 })
 
 # Второе дерево
@@ -163,6 +161,41 @@ trees.append({
 trees.append({
     'image': tree_img,
     'x': 900,
+    'y': GROUND_LEVEL - tree_img.get_height() + 100 + random.randint(-5, 5)
+})
+
+# Шестое дерево
+trees.append({
+    'image': tree_img,
+    'x': 1200,
+    'y': GROUND_LEVEL - tree_img.get_height() + 100 + random.randint(-5, 5)
+})
+
+# Седьмое дерево
+trees.append({
+    'image': tree_img,
+    'x': 1500,
+    'y': GROUND_LEVEL - tree_img.get_height() + 100 + random.randint(-5, 5)
+})
+
+# Восьмое дерево
+trees.append({
+    'image': tree_img,
+    'x': 1800,
+    'y': GROUND_LEVEL - tree_img.get_height() + 100 + random.randint(-5, 5)
+})
+
+# Девятое дерево
+trees.append({
+    'image': tree_img,
+    'x': 2100,
+    'y': GROUND_LEVEL - tree_img.get_height() + 100 + random.randint(-5, 5)
+})
+
+# Десятое дерево
+trees.append({
+    'image': tree_img,
+    'x': 2400,
     'y': GROUND_LEVEL - tree_img.get_height() + 100 + random.randint(-5, 5)
 })
 
@@ -201,7 +234,7 @@ slides = [
     },
     {
         "title": "Выводы",
-        "text": "Мы изучили и разобрали воздушный шар по полочкам.\n\n Теперь переёдем к финальному тестированию и завершим данный урок",
+        "text": "Мы изучили и разобрали воздушный шар.\n\n Теперь перейдём к финальному тестированию и завершим данный урок",
         "color": (200, 150, 200)
     }
 ]
@@ -229,9 +262,12 @@ BUTTON_SIZE = 60
 BALAST_BUTTON = pygame.Rect(40, HEIGHT - 80, BUTTON_SIZE, BUTTON_SIZE)
 KLAPAN_BUTTON = pygame.Rect(120, HEIGHT - 80, BUTTON_SIZE, BUTTON_SIZE)
 
-# Камера
-camera_x = 0
-camera_y = 0
+# Смещение мира (для эффекта движения) - с плавным следованием
+world_offset_x = 0
+world_offset_y = 0
+target_offset_x = 0
+target_offset_y = 0
+camera_follow_speed = 0.05  # Скорость следования камеры (чем меньше, тем медленнее)
 
 def apply_zoom(surface, zoom):
     if zoom == 1.0:
@@ -412,6 +448,7 @@ while running:
             check_zone()
 
             if in_green_zone:
+                # Шар движется вправо по миру (без ограничений)
                 balloon_x += wind_speed
                 green_zone_distance = balloon_x - last_color_change_x
 
@@ -426,16 +463,19 @@ while running:
                 balloon_x += math.sin(pygame.time.get_ticks() * 0.005) * 0.5
                 balloon_y = max(MAX_HEIGHT, balloon_y)
 
-    # Камера
-    target_camera_x = balloon_x - WIDTH//2 + balloon_width//2
-    target_camera_y = balloon_y - HEIGHT//2 + balloon_height//2
-    camera_x += (target_camera_x - camera_x) * 0.05
-    camera_y += (target_camera_y - camera_y) * 0.05
-    camera_x = max(0, min(camera_x, WORLD_WIDTH - WIDTH))
-    camera_y = max(0, min(camera_y, WORLD_HEIGHT - HEIGHT))
+    # Вычисляем целевую позицию камеры (где должен быть центр экрана относительно мира)
+    # Цель - держать шар в центре экрана
+    target_offset_x = balloon_x - WIDTH//2 + balloon_width//2
+    target_offset_y = balloon_y - HEIGHT//2 + balloon_height//2
+
+    # НИКАКИХ ОГРАНИЧЕНИЙ! Камера следует за шаром куда угодно
+
+    # Плавно двигаем камеру к целевой позиции (неуспевающее движение)
+    world_offset_x += (target_offset_x - world_offset_x) * camera_follow_speed
+    world_offset_y += (target_offset_y - world_offset_y) * camera_follow_speed
 
     # ОТРИСОВКА
-    # Небо
+    # Небо (фон всегда на месте, не двигается с миром)
     for i in range(HEIGHT):
         ratio = i / HEIGHT
         r = int(135 * (1-ratio) + 200 * ratio)
@@ -443,17 +483,18 @@ while running:
         b = int(235 * (1-ratio) + 255 * ratio)
         pygame.draw.line(screen, (r, g, b), (0, i), (WIDTH, i))
 
-    # Солнце
+    # Солнце (не двигается с миром)
     pygame.draw.circle(screen, YELLOW, (850, 70), 40)
 
-    # Облака
+    # Облака (двигаются с миром)
     for cloud in clouds:
         cloud['x'] += cloud['speed']
         if cloud['x'] > WORLD_WIDTH + 300:
             cloud['x'] = -300
 
-        cx = cloud['x'] - camera_x
-        cy = cloud['y'] - camera_y
+        # Позиция облака на экране с учетом смещения мира
+        cx = cloud['x'] - world_offset_x
+        cy = cloud['y'] - world_offset_y
 
         if -300 < cx < WIDTH + 300:
             size = int(cloud['size'] * camera_zoom)
@@ -468,77 +509,112 @@ while running:
                                  (circle_x, circle_y), circle_radius)
             screen.blit(cloud_surf, (cx, cy))
 
-    # ЗЕМЛЯ
-    ground_y = GROUND_LEVEL - camera_y
+    # ЗЕМЛЯ (с учетом смещения мира)
+    ground_y = GROUND_LEVEL - world_offset_y
     if ground_y < HEIGHT:
         pygame.draw.rect(screen, GREEN, (0, ground_y, WIDTH, HEIGHT - ground_y + 20))
 
-    # ДЕРЕВЬЯ
+    # ДЕРЕВЬЯ (с учетом смещения мира)
     for tree in trees:
-        tree_x = tree['x'] - camera_x
-        tree_y = tree['y'] - camera_y
+        tree_x = tree['x'] - world_offset_x
+        tree_y = tree['y'] - world_offset_y
         if -100 < tree_x < WIDTH + 100:
             scaled_tree = apply_zoom(tree['image'], camera_zoom)
             screen.blit(scaled_tree, (tree_x, tree_y))
 
-    # ПОЛОСЫ - только в F3
+    # ПОЛОСЫ - только в F3, с правильными цветами (с учетом смещения мира)
     if game_started and show_zones:
-        zone_screen_y = zone_center_y - camera_y
+        zone_screen_y = zone_center_y - world_offset_y
 
-        # Верхняя полоса
-        red_top_y = zone_screen_y - ZONE_HEIGHT - ZONE_SPACING - ZONE_HEIGHT//2
-        pygame.draw.rect(screen, (255, 100, 100, 60), (0, red_top_y, WIDTH, ZONE_HEIGHT))
+        # Верхняя зона (индекс 0)
+        top_zone_y = zone_screen_y - ZONE_HEIGHT - ZONE_SPACING - ZONE_HEIGHT//2
+        if color_config == 0:
+            zone_color = (100, 255, 100, 60)  # Зеленая
+        else:
+            zone_color = (255, 100, 100, 60)  # Красная
+        pygame.draw.rect(screen, zone_color, (0, top_zone_y, WIDTH, ZONE_HEIGHT))
 
-        # Средняя полоса
-        green_y = zone_screen_y - ZONE_HEIGHT//2
-        pygame.draw.rect(screen, (100, 255, 100, 60), (0, green_y, WIDTH, ZONE_HEIGHT))
+        # Средняя зона (индекс 1)
+        middle_zone_y = zone_screen_y - ZONE_HEIGHT//2
+        if color_config == 1:
+            zone_color = (100, 255, 100, 60)  # Зеленая
+        else:
+            zone_color = (255, 100, 100, 60)  # Красная
+        pygame.draw.rect(screen, zone_color, (0, middle_zone_y, WIDTH, ZONE_HEIGHT))
 
-        # Нижняя полоса
-        red_bottom_y = zone_screen_y + ZONE_HEIGHT + ZONE_SPACING - ZONE_HEIGHT//2
-        pygame.draw.rect(screen, (255, 100, 100, 60), (0, red_bottom_y, WIDTH, ZONE_HEIGHT))
+        # Нижняя зона (индекс 2)
+        bottom_zone_y = zone_screen_y + ZONE_HEIGHT + ZONE_SPACING - ZONE_HEIGHT//2
+        if color_config == 2:
+            zone_color = (100, 255, 100, 60)  # Зеленая
+        else:
+            zone_color = (255, 100, 100, 60)  # Красная
+        pygame.draw.rect(screen, zone_color, (0, bottom_zone_y, WIDTH, ZONE_HEIGHT))
 
-    # ВЕТЕР - красивые белые линии в несколько рядов
-    if game_started and in_green_zone:
+    # ВЕТЕР - ТОЛЬКО ПО ЦЕНТРУ АКТИВНОЙ ЗОНЫ (с учетом смещения мира)
+    if game_started:
         time_offset = pygame.time.get_ticks() * 0.15
-        balloon_center_x = balloon_x - camera_x + balloon_width // 2
-        balloon_center_y = balloon_y - camera_y + balloon_height // 2
+        zone_screen_y = zone_center_y - world_offset_y
 
-        # Создаём несколько рядов линий
+        # Правильные центры каждой зоны
+        zone_centers = [
+            zone_screen_y - ZONE_HEIGHT - ZONE_SPACING,  # Центр верхней зоны
+            zone_screen_y,                                # Центр средней зоны
+            zone_screen_y + ZONE_HEIGHT + ZONE_SPACING   # Центр нижней зоны
+        ]
+
+        # Только для активной зоны (color_config) отрисовываем ветер
+        active_zone_idx = color_config
+        center_y = zone_centers[active_zone_idx]
+
+        # Узкая полоса ветра (толщиной 30 пикселей)
+        wind_strip_top = center_y - 15
+        wind_strip_bottom = center_y + 15
+
+        # Создаём несколько рядов линий внутри узкой полосы
         for row in range(3):  # 3 ряда линий
-            row_offset = (row - 1) * 30  # Смещение по вертикали между рядами
-            y_pos = balloon_center_y + row_offset
+            row_offset = (row - 1) * 8  # Небольшое смещение по вертикали
+            y_pos = center_y + row_offset
 
-            for i in range(20):  # 20 линий в ряду
-                # Линии движутся справа налево
-                x_pos = (time_offset + i * 60 + row * 20) % (WIDTH + 300) - 150
+            # Проверяем, находится ли ряд в пределах узкой полосы
+            if wind_strip_top <= y_pos <= wind_strip_bottom:
+                for i in range(12):  # 12 линий в ряду
+                    # Линии движутся справа налево
+                    x_pos = (time_offset + i * 70 + row * 25) % (WIDTH + 300) - 150
 
-                # Разная длина линий для разнообразия
-                length = 40 + (i % 3) * 15
+                    # Разная длина линий для разнообразия
+                    length = 60 + (i % 3) * 25
 
-                # Разная прозрачность (дальние линии светлее)
-                alpha = 200 - row * 40
+                    # Основная линия
+                    alpha = 255 - row * 30
+                    pygame.draw.line(screen, (255, 255, 255, alpha),
+                                   (x_pos, y_pos), (x_pos + length, y_pos), 3)
 
-                # Основная линия
-                pygame.draw.line(screen, (255, 255, 255, alpha),
-                               (x_pos, y_pos), (x_pos + length, y_pos), 2)
+                    # Дополнительная линия для эффекта скорости
+                    if i % 2 == 0:
+                        pygame.draw.line(screen, (255, 255, 255, alpha//2),
+                                       (x_pos - 10, y_pos - 1), (x_pos + length - 10, y_pos - 1), 2)
 
-                # Лёгкое размытие для эффекта скорости
-                if i % 2 == 0:
-                    pygame.draw.line(screen, (255, 255, 255, alpha//2),
-                                   (x_pos - 5, y_pos - 1), (x_pos + length - 5, y_pos - 1), 1)
-
-    # ШАР
+    # ШАР - теперь всегда следует за камерой
+    # Позиция шара на экране зависит от смещения камеры
+    balloon_screen_x = balloon_x - world_offset_x
+    balloon_screen_y = balloon_y - world_offset_y
     scaled_balloon = apply_zoom(original_balloon, camera_zoom)
-    screen.blit(scaled_balloon, (balloon_x - camera_x, balloon_y - camera_y))
+    screen.blit(scaled_balloon, (balloon_screen_x, balloon_screen_y))
 
     # Дебаг информация
     if debug_mode:
         debug_text1 = font_small.render(f"Zone: {current_zone}", True, WHITE)
         debug_text2 = font_small.render(f"Green: {color_config}", True, WHITE)
         debug_text3 = font_small.render(f"Count: {color_change_counter}", True, WHITE)
+        debug_text4 = font_small.render(f"World X: {int(balloon_x)}", True, WHITE)
+        debug_text5 = font_small.render(f"Cam Speed: {camera_follow_speed}", True, WHITE)
+        debug_text6 = font_small.render(f"Cam Offset: {int(world_offset_x)}", True, WHITE)
         screen.blit(debug_text1, (10, 10))
         screen.blit(debug_text2, (10, 30))
         screen.blit(debug_text3, (10, 50))
+        screen.blit(debug_text4, (10, 70))
+        screen.blit(debug_text5, (10, 90))
+        screen.blit(debug_text6, (10, 110))
 
     # СЧЁТЧИК
     if game_started and not game_completed and in_green_zone:
